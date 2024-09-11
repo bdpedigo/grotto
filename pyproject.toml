@@ -1,0 +1,15 @@
+[project]
+name = "grotto"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "caveclient>=5.25.2",
+    "joblib>=1.4.2",
+    "tqdm-joblib>=0.0.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
