@@ -3,10 +3,10 @@ from typing import Callable
 
 import joblib
 import pandas as pd
+from caveclient.frameworkclient import CAVEclientFull
+from numpy.typing import ArrayLike
 from tqdm.auto import tqdm
 from tqdm_joblib import tqdm_joblib
-
-from caveclient.frameworkclient import CAVEclientFull
 
 
 def _get_object_methods(obj, exclude_private=True):
@@ -122,13 +122,13 @@ class GrottoClient(CAVEclientFull):
         super().state
 
         # add all methods from the lazy clients into this class
-        _promote_methods(super().annotation, self)
-        _promote_methods(super().chunkedgraph, self)
-        # _promote_methods(super().info, self)
-        _promote_methods(super().l2cache, self)
-        _promote_methods(super().materialize, self)
-        _promote_methods(super().schema, self)
-        _promote_methods(super().state, self)
+        # _promote_methods(super().annotation, self)
+        # _promote_methods(super().chunkedgraph, self)
+        # # _promote_methods(super().info, self)
+        # _promote_methods(super().l2cache, self)
+        # _promote_methods(super().materialize, self)
+        # _promote_methods(super().schema, self)
+        # _promote_methods(super().state, self)
 
     # override the lazy properties, make sure they have type hints
     # @property
@@ -189,3 +189,40 @@ class GrottoClient(CAVEclientFull):
     # @_dispatch_method(output_format="dataframe")
     # def get_leaves_multiple(self, node_id, **kwargs):
     #     return self.get_leaves(node_id, **kwargs)
+
+    @property
+    def segmentation_cloudvolume(self):
+        if not hasattr(self, "_segmentation_cloudvolume"):
+            self._segmentation_cloudvolume = self.info.segmentation_cloudvolume(
+                progress=False
+            )
+        return self._segmentation_cloudvolume
+
+    def get_meshes(
+        self,
+        node_ids: ArrayLike,
+        deduplicate_chunk_boundaries=False,
+        remove_duplicate_vertices=False,
+        **kwargs,
+    ):
+        return self.segmentation_cloudvolume.mesh.get(
+            node_ids,
+            deduplicate_chunk_boundaries=deduplicate_chunk_boundaries,
+            remove_duplicate_vertices=remove_duplicate_vertices,
+            **kwargs,
+        )
+
+    def get_mesh(self, node_id: int, **kwargs):
+        return self.get_meshes([node_id], **kwargs)[node_id]
+
+    def get_nucleus_location(self, root_id):
+        nuc_info = self.query_table(
+            "nucleus_detection_v0",
+            filter_equal_dict={"pt_root_id": root_id},
+            split_positions=True,
+        )
+        if nuc_info.empty:
+            return None
+
+        nuc_loc = nuc_info[["x", "y", "z"]].values.squeeze()
+        return nuc_loc
