@@ -1,0 +1,39 @@
+from typing import Optional
+
+import numpy as np
+from caveclient import CAVEclient
+
+
+def find_nucleus_point(root_id: int, client: CAVEclient) -> Optional[np.ndarray]:
+    if "minnie" not in client.datastack_name:
+        raise NotImplementedError(
+            "This function is currently only supported for minnie65 and minnie65_public"
+        )
+    current_root_id = client.chunkedgraph.suggest_latest_roots(root_id)
+    nuc_table = client.materialize.views.nucleus_detection_lookup_v1(
+        pt_root_id=current_root_id
+    ).query(
+        split_positions=True,
+        desired_resolution=[1, 1, 1],
+    )
+    if len(nuc_table) > 1:  # find correct nucleus, hopefully one is a neuron
+        cell_table = client.materialize.query_table(
+            "aibs_metamodel_mtypes_v661_v2",
+            filter_in_dict={"target_id": nuc_table["id"].values},
+        )
+        if len(cell_table) == 1:
+            neuron_nuc_id = cell_table["id_ref"].values[0]
+            nuc_table = nuc_table.set_index("id").loc[[neuron_nuc_id]]
+        else:
+            raise ValueError(f"Found more than one neuron nucleus for root {root_id}")
+    elif len(nuc_table) == 0:
+        raise ValueError(f"Found no nucleus for root {root_id}")
+    else:
+        pass  # has one nucleus
+
+    nuc_coords = nuc_table[["pt_position_x", "pt_position_y", "pt_position_z"]].values
+
+    if nuc_coords.shape != (1, 3):
+        raise ValueError(f"Error finding nucleus for root {root_id}")
+
+    return nuc_coords

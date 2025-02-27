@@ -3,9 +3,9 @@ name = "grotto"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = [
-    "caveclient>=5.25.2",
+    "caveclient[cv]>=5.25.2",
     "joblib>=1.4.2",
     "tqdm-joblib>=0.0.4",
 ]

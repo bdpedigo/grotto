@@ -168,6 +168,7 @@ class GrottoClient(CAVEclientFull):
     def query_table(self, *args, **kwargs):
         kwargs["split_positions"] = True
         kwargs["desired_resolution"] = [1.0, 1.0, 1.0]
+        kwargs["log_warning"] = False
         out = self.materialize.query_table(*args, **kwargs)
         col_rename = {}
         for dim in ["x", "y", "z"]:
@@ -203,23 +204,48 @@ class GrottoClient(CAVEclientFull):
         node_ids: ArrayLike,
         deduplicate_chunk_boundaries=False,
         remove_duplicate_vertices=False,
+        bounding_boxes=None,
         **kwargs,
     ):
-        return self.segmentation_cloudvolume.mesh.get(
-            node_ids,
-            deduplicate_chunk_boundaries=deduplicate_chunk_boundaries,
-            remove_duplicate_vertices=remove_duplicate_vertices,
-            **kwargs,
-        )
+        if bounding_boxes is None:
+            return self.segmentation_cloudvolume.mesh.get(
+                node_ids,
+                deduplicate_chunk_boundaries=deduplicate_chunk_boundaries,
+                remove_duplicate_vertices=remove_duplicate_vertices,
+                **kwargs,
+            )
+        else:
+
+            def _get_this_mesh(node_id, bounding_box):
+                return self.segmentation_cloudvolume.mesh.get(
+                    node_id,
+                    bounding_box=bounding_box,
+                    deduplicate_chunk_boundaries=deduplicate_chunk_boundaries,
+                    remove_duplicate_vertices=remove_duplicate_vertices,
+                    **kwargs,
+                )[node_id]
+
+            from joblib import Parallel, delayed
+            from tqdm_joblib import tqdm_joblib
+
+            with tqdm_joblib(total=len(node_ids), desc="Getting meshes"):
+                meshes = Parallel(n_jobs=self.n_jobs)(
+                    delayed(_get_this_mesh)(node_id, bounding_box)
+                    for node_id, bounding_box in zip(node_ids, bounding_boxes)
+                )
+            return meshes
 
     def get_mesh(self, node_id: int, **kwargs):
         return self.get_meshes([node_id], **kwargs)[node_id]
 
     def get_nucleus_location(self, root_id):
+        # TODO outdated and not general
+        timestamp = self.chunkedgraph.get_root_timestamps(root_id, latest=True)[0]
         nuc_info = self.query_table(
             "nucleus_detection_v0",
             filter_equal_dict={"pt_root_id": root_id},
             split_positions=True,
+            timestamp=timestamp,
         )
         if nuc_info.empty:
             return None
