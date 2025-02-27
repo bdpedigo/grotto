@@ -9,6 +9,28 @@ from caveclient import CAVEclient
 def create_skeleton_bucket(
     bucket_path: str, client: CAVEclient, vertex_attributes: list[str]
 ):
+    """
+    Generates a bucket with info files for storing precomputed skeletons.
+
+    Parameters
+    ----------
+    bucket_path :
+        The path to the bucket where the skeletons will be stored. Follows the
+        cloudvolume conventions, so will likely look like
+        "gs://bucket-name/path/to/skeletons".
+    client :
+        The client to use for getting the base info.
+    vertex_attributes :
+        The list of attributes to store on the vertices of the skeleton. Radius is
+        automatically included. Attributes will be added in the order provided.
+
+    Returns
+    -------
+    :
+        The cloudvolume object for writing skeletons to the bucket.
+    :
+        The attribute info to be used for each skeleton.
+    """
     base_cv = client.info.segmentation_cloudvolume()
 
     info = base_cv.info.copy()
@@ -46,6 +68,29 @@ def create_skeleton(
     vertex_attributes: Optional[pd.DataFrame] = None,
     attribute_info: dict = None,
 ):
+    """
+    Creates a skeleton object from the provided vertices and edges, and optional
+    attributes.
+
+    Parameters
+    ----------
+    vertices :
+        The vertices of the skeleton, provided as an (n,3) array of coordinates.
+    edges :
+        The edges of the skeleton, provided as an (e,2) array of vertex indices.
+    segid :
+        The segid to associate with the skeleton.
+    vertex_attributes :
+        The attributes to store on the vertices of the skeleton. If provided, the
+        attribute_info must also be provided.
+    attribute_info :
+        The information about the attributes to be stored on the vertices.
+
+    Returns
+    -------
+    :
+        The skeleton object.
+    """
     skeleton = cloudvolume.Skeleton(
         vertices=vertices.astype(np.float32),
         edges=edges,
