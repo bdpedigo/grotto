@@ -91,6 +91,8 @@ def create_skeleton(
     :
         The skeleton object.
     """
+    if edges is None:
+        edges = np.zeros((0, 2), dtype=np.uint32)
     skeleton = cloudvolume.Skeleton(
         vertices=vertices.astype(np.float32),
         edges=edges,
